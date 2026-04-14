@@ -69,7 +69,7 @@ async function main(){
     // stop times format
     skyTrainStopTimes.forEach(row => row._id = `${row.trip_id}_${row.stop_sequence}`);
     await uploadInBatches("stop_times", skyTrainStopIds,"_id");
-    console.log(`Kept ${skytrainStopTimes.length} / ${allStops.length} stop times`);
+    console.log(`Kept ${skyTrainStopTimes.length} / ${allStops.length} stop times`);
 
     console.log("Sync Complete!");
 }
