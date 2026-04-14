@@ -13,7 +13,7 @@ admin.initializeApp({
 
 const db = admin.firestore();
 
-const SKYTRAIN_ROUTE_IDS= new Set(["99901", "99902", "99903"]);
+const SKYTRAIN_ROUTE_IDS= new Set(["30053", "30052", "13686"]);
 
 const GTFS_URL=`https://gtfs-static.translink.ca/gtfs/google_transit.zip`;
 
