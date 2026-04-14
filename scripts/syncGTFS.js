@@ -27,7 +27,7 @@ async function uploadInBatches(collectionName, rows, keyField) {
         });
 
         await batch.commit();
-        console.log(`Uploaded ${Math.min(i * BATCH_SIZE, rows.length)} / ${rows.length} to ${collectionName}`);
+        console.log(`Uploaded ${Math.min(i + BATCH_SIZE, rows.length)} / ${rows.length} to ${collectionName}`);
     }
 }
 
@@ -47,7 +47,7 @@ async function main(){
     const skyTrainTrips = allTrips.filter(t => SKYTRAIN_ROUTE_IDS.has(t.route_id));
     const skyTrainTripIds = new Set(skyTrainTrips.map(t => t.trip_id));
 
-    await uploadInBatches("trips", skyTrainTrips, "trips_id");
+    await uploadInBatches("trips", skyTrainTrips, "trip_id");
     console.log(`Kept ${skyTrainTrips.length} / ${allTrips.length} trips`);
 
     // stop_times.txt
