@@ -19,7 +19,7 @@ const GTFS_URL=`https://gtfs-static.translink.ca/gtfs/google_transit.zip`;
 
 async function uploadInBatches(collectionName, rows, keyField) {
     const BATCH_SIZE = 400;
-    for(let i = 0; i <rows.length; ++i){
+    for(let i = 0; i <rows.length; i += BATCH_SIZE){
         const batch = db.batch();
         rows.slice(i, i + BATCH_SIZE).forEach((row) => {
            const ref = db.collection(collectionName).doc(row[keyField]);
@@ -45,13 +45,13 @@ async function main(){
 
     // Filter for only SkyTrain
     const skyTrainTrips = allTrips.filter(t => SKYTRAIN_ROUTE_IDS.has(t.route_id));
-    const skyTrainTripIds = new Set(skyTrainTrips.map(t => t.id));
+    const skyTrainTripIds = new Set(skyTrainTrips.map(t => t.trip_id));
 
-    await uploadInBatches("trips", skyTrainTripIds, "trips_id");
-    console.log(`Kept ${skyTrainTrips.length} / ${allTrips.length}`);
+    await uploadInBatches("trips", skyTrainTrips, "trips_id");
+    console.log(`Kept ${skyTrainTrips.length} / ${allTrips.length} trips`);
 
     // stop_times.txt
-    const stopTimesCSV = zip.readAsText("stops_times.txt");
+    const stopTimesCSV = zip.readAsText("stop_times.txt");
     const allStopTimes = parse(stopTimesCSV, {columns: true, skip_empty_lines: true});
 
     const skyTrainStopTimes = allStopTimes.filter(st => skyTrainTripIds.has(st.trip_id));
@@ -64,11 +64,11 @@ async function main(){
     const skyTrainStops = allStops.filter(s => skyTrainStopIds.has(s.stop_id))
     console.log(`Kept ${skyTrainStops.length} / ${allStops.length} stops`);
 
-    await uploadInBatches("stops", skyTrainStops, "stops_id");
+    await uploadInBatches("stops", skyTrainStops, "stop_id");
 
     // stop times format
     skyTrainStopTimes.forEach(row => row._id = `${row.trip_id}_${row.stop_sequence}`);
-    await uploadInBatches("stop_times", skyTrainStopIds,"_id");
+    await uploadInBatches("stop_times", skyTrainStopTimes,"_id");
     console.log(`Kept ${skyTrainStopTimes.length} / ${allStops.length} stop times`);
 
     console.log("Sync Complete!");
