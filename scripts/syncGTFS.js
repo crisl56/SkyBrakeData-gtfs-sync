@@ -59,7 +59,7 @@ async function main(){
 
     // stops.txt
     const stopsCSV = zip.readAsText("stops.txt");
-    const allStops = parse(stopsCFSV, {columns: true, skip_empty_lines: true});
+    const allStops = parse(stopsCSV, {columns: true, skip_empty_lines: true});
 
     const skyTrainStops = allStops.filter(s => skyTrainStopIds.has(s.stop_id))
     console.log(`Kept ${skyTrainStops.length} / ${allStops.length} stops`);
