@@ -2,6 +2,8 @@ const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 const AdmZip = require("adm-zip");
 const { parse } = require("csv-parse/sync");
+const protobuf = require("protobufjs");
+const fs = require("fs");
 
 admin.initializeApp({
     credential: admin.credential.cert({
@@ -9,26 +11,25 @@ admin.initializeApp({
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     }),
+    storageBucket: `${process.env.FIREBASE_PROJECT_NAME}.appspot.com`
 });
 
 const db = admin.firestore();
+const bucket = admin.storage().bucket('')
 
 const SKYTRAIN_ROUTE_IDS= new Set(["30053", "30052", "13686"]);
-
 const GTFS_URL=`https://gtfs-static.translink.ca/gtfs/google_transit.zip`;
 
-async function uploadInBatches(collectionName, rows, keyField) {
-    const BATCH_SIZE = 400;
-    for(let i = 0; i <rows.length; i += BATCH_SIZE){
-        const batch = db.batch();
-        rows.slice(i, i + BATCH_SIZE).forEach((row) => {
-           const ref = db.collection(collectionName).doc(row[keyField]);
-           batch.set(ref, row);
-        });
+async function uploadProtoToStorage(filename, buffer){
+    fs.writeFileSync(filename, buffer);
 
-        await batch.commit();
-        console.log(`Uploaded ${Math.min(i + BATCH_SIZE, rows.length)} / ${rows.length} to ${collectionName}`);
-    }
+    await bucket.upload(filename, {
+        destination: `gtfs/${filename}`,
+        metadata: { contentType: 'application/octet-stream' }
+    });
+
+    fs.unlinkSync(filename);
+    console.log(`Uploaded ${filename} to FirebaseStorage`);
 }
 
 async function main(){
@@ -39,6 +40,8 @@ async function main(){
     const buffer = await res.arrayBuffer();
     const zip = new AdmZip(Buffer.from(buffer));
 
+    const root = await protobuf.load("gtfs.proto");
+
     // parse trips.txt
     const tripsCSV = zip.readAsText("trips.txt");
     const allTrips = parse(tripsCSV, {columns: true, skip_empty_lines: true});
@@ -47,8 +50,16 @@ async function main(){
     const skyTrainTrips = allTrips.filter(t => SKYTRAIN_ROUTE_IDS.has(t.route_id));
     const skyTrainTripIds = new Set(skyTrainTrips.map(t => t.trip_id));
 
-    await uploadInBatches("trips", skyTrainTrips, "trip_id");
     console.log(`Kept ${skyTrainTrips.length} / ${allTrips.length} trips`);
+
+    const TripList = root.lookupType("TripList");
+    const tripsPayload = TripList.create({ trips: skyTrainTrips.map(st => ({
+            tripId: st.trip_id,
+            routeId: st.route_id,
+            serviceId: st.service_id,
+            directionId: parseInt(st.direction_id) || 0,
+        }))});
+    await uploadProtoToStorage("trips.pb", TripList.encode(tripsPayload).finish());
 
     // stop_times.txt
     const stopTimesCSV = zip.readAsText("stop_times.txt");
@@ -57,6 +68,18 @@ async function main(){
     const skyTrainStopTimes = allStopTimes.filter(st => skyTrainTripIds.has(st.trip_id));
     const skyTrainStopIds = new Set(skyTrainStopTimes.map(st => st.stop_id));
 
+    console.log(`Kept ${skyTrainStopTimes.length} / ${allStopTimes.length} stops`);
+
+    const StopTimeList = root.lookupType("StopTimeList");
+    const stopTimesPayload = StopTimeList.create({ stopTimes: skyTrainStopTimes.map(st => ({
+            stopId: st.trip_id,
+            stopId: st.stop_id,
+            arrivalTime: st.arrival_time,
+            departureTime: st.depature_time,
+            stopSequence: parseInt(st.stop_sequence) || 0,
+        }))});
+    await uploadProtoToStorage("stop_times.pb", StopTimeList.encode(stopTimesPayload)).finish();
+
     // stops.txt
     const stopsCSV = zip.readAsText("stops.txt");
     const allStops = parse(stopsCSV, {columns: true, skip_empty_lines: true});
@@ -64,14 +87,17 @@ async function main(){
     const skyTrainStops = allStops.filter(s => skyTrainStopIds.has(s.stop_id))
     console.log(`Kept ${skyTrainStops.length} / ${allStops.length} stops`);
 
-    await uploadInBatches("stops", skyTrainStops, "stop_id");
+    const StopList = root.lookupType("StopList");
+    const stopsPayload = StopList.create({stops: skyTrainStops.map(st => ({
+            stopId: st.stop_id,
+            stopName: st.stop_name,
+            stopLat: parseFloat(st.stop_lat) || 0,
+            stopLon: parseFloat(st.stop_lon) || 0,
+        }))});
 
-    // stop times format
-    skyTrainStopTimes.forEach(row => row._id = `${row.trip_id}_${row.stop_sequence}`);
-    await uploadInBatches("stop_times", skyTrainStopTimes,"_id");
-    console.log(`Kept ${skyTrainStopTimes.length} / ${allStops.length} stop times`);
+    await uploadProtoToStorage("stop_times.pb", StopTimeList.encode(stopsPayload).finish());
 
-    console.log("Sync Complete!");
+    console.log("Sync Complete");
 }
 
 main().catch(console.error);

@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+message Trip {
+    string trip_id = 1;
+    string route_id = 1;
+    string service_id = 3;
+    int32 direction_id = 6;
+}
+
+message TripList {
+    repeated Trip trips = 1;
+}
+
+message StopTime {
+    string trip_id = 1;
+    string stop_id = 2;
+    string arrival_time = 3;
+    string departed_time = 4;
+    string stop_sequence = 5;
+}
+
+message StopTimeList{
+    repeated StopTime stop_times = 1;
+}
+
+message Stop {
+    string stop_id = 1;
+    string stop_name = 2;
+    float stop_lat = 3;
+    float stop_lon = 4;
+}
+
+message StopList{
+    repeated Stop stops = 1;
+}
