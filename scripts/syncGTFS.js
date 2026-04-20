@@ -1,3 +1,4 @@
+require("dotenv").config();
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 const AdmZip = require("adm-zip");
@@ -5,13 +6,14 @@ const { parse } = require("csv-parse/sync");
 const protobuf = require("protobufjs");
 const fs = require("fs");
 
+
 admin.initializeApp({
     credential: admin.credential.cert({
         projectId: process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
         privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
     }),
-    storageBucket: `${process.env.FIREBASE_PROJECT_NAME}.appspot.com`
+    storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`
 });
 
 const db = admin.firestore();
@@ -34,7 +36,7 @@ async function uploadProtoToStorage(filename, buffer){
 
 async function main(){
     console.log("Fetching GTFS zip...");
-    
+
     // Acquire zip data
     const res = await fetch(GTFS_URL);
     const buffer = await res.arrayBuffer();
