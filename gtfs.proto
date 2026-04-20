@@ -2,7 +2,7 @@ syntax = "proto3";
 
 message Trip {
     string trip_id = 1;
-    string route_id = 1;
+    string route_id = 2;
     string service_id = 3;
     int32 direction_id = 6;
 }
