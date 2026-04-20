@@ -15,7 +15,7 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
-const bucket = admin.storage().bucket('')
+const bucket = admin.storage().bucket();
 
 const SKYTRAIN_ROUTE_IDS= new Set(["30053", "30052", "13686"]);
 const GTFS_URL=`https://gtfs-static.translink.ca/gtfs/google_transit.zip`;
@@ -72,13 +72,13 @@ async function main(){
 
     const StopTimeList = root.lookupType("StopTimeList");
     const stopTimesPayload = StopTimeList.create({ stopTimes: skyTrainStopTimes.map(st => ({
-            stopId: st.trip_id,
+            tripId: st.trip_id,
             stopId: st.stop_id,
             arrivalTime: st.arrival_time,
-            departureTime: st.depature_time,
+            departureTime: st.departure_time,
             stopSequence: parseInt(st.stop_sequence) || 0,
         }))});
-    await uploadProtoToStorage("stop_times.pb", StopTimeList.encode(stopTimesPayload)).finish();
+    await uploadProtoToStorage("stop_times.pb", StopTimeList.encode(stopTimesPayload).finish());
 
     // stops.txt
     const stopsCSV = zip.readAsText("stops.txt");
