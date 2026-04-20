@@ -97,7 +97,7 @@ async function main(){
             stopLon: parseFloat(st.stop_lon) || 0,
         }))});
 
-    await uploadProtoToStorage("stop_times.pb", StopTimeList.encode(stopsPayload).finish());
+    await uploadProtoToStorage("stops.pb", StopTimeList.encode(stopsPayload).finish());
 
     console.log("Sync Complete");
 }
